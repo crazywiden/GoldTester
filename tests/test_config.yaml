@@ -1,0 +1,47 @@
+run:
+  start_date: 2015-01-01
+  end_date: 2019-12-31
+  seed: 42
+  price_column_for_valuation: close
+
+portfolio:
+  initial_cash: 1000000.0
+  allow_short: false
+  max_leverage: 1.0
+
+execution:
+  order_fill_method: next_open
+  slippage_model:
+    type: bps_per_turnover
+    bps_per_1x_turnover: 10
+  commission_model:
+    type: per_share
+    per_share: 0.005
+    min_per_order: 1.0
+  allow_partial_fills: true
+  max_participation_adv: 0.1
+  skip_if_halted: true
+  respect_delisting: true
+
+accounting:
+  risk_free_rate:
+    mode: constant
+    constant_annual: 0.03
+
+signals:
+  module: strategies.my_signal
+  function: compute_target_weights
+  constraints:
+    max_weight_per_symbol: 0.1
+    target_weight_rounding: 0.0001
+
+io:
+  market_data_path: data/market.csv
+  halts_path: data/halts.csv
+  output_dir: out/run_001
+  artifacts:
+    write_trades: true
+    write_positions: true
+    write_portfolio: true
+    write_metrics: true
+    write_tearsheet: false
