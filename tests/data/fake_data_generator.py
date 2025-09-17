@@ -39,9 +39,10 @@ def generate_fake_stock_data(start_date, end_date, num_tickers, output_path):
 
         ticker_df = pd.DataFrame({
             'date': dates,
-            'ticker': ticker,
+            'symbol': ticker,
             'open': open_prices,
             'close': close_prices,
+            'adjusted_close': close_prices,
             'high': high_prices,
             'low': low_prices,
             'volume': volumes

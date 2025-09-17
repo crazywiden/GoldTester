@@ -6,9 +6,9 @@ import math
 import pandas as pd
 from loguru import logger
 
-from .types import Order, Fill
-from .utils import typical_price
-from .data_loader import DataLoader
+from backtest.types import Order, Fill
+from backtest.utils import typical_price
+from backtest.data_loader import DataLoader
 
 
 class ExecutionSimulator:

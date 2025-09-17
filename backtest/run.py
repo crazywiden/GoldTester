@@ -3,19 +3,20 @@ import time
 import argparse
 
 from loguru import logger
-from .utils import load_yaml, seed_everything, ensure_dir
-from .data_loader import DataLoader, choose_ref_prices_for_next_fill, get_marking_series
-from .signals import load_user_signal
-from .orders import OrderGenerator
-from .execution import ExecutionSimulator
-from .accounting import Portfolio
-from .metrics import MetricsEngine
-from .reporting import init_reporting, persist_position_map, persist_snapshots, REPORTER
-from .utils import next_trading_day
+from backtest.utils import load_yaml, seed_everything, ensure_dir
+from backtest.data_loader import DataLoader, choose_ref_prices_for_next_fill, get_marking_series
+from backtest.signals import load_user_signal
+from backtest.orders import OrderGenerator
+from backtest.execution import ExecutionSimulator
+from backtest.accounting import Portfolio
+from backtest.metrics import MetricsEngine
+from backtest.reporting import init_reporting, persist_position_map, persist_snapshots, REPORTER
+from backtest.utils import next_trading_day
 
 
 def run(cfg_path: str) -> None:
     cfg = load_yaml(cfg_path)
+    logger.info(f"Config: {cfg}")
     seed_everything(int(cfg.get("run", {}).get("seed", 42)))
     ensure_dir(cfg.get("io", {}).get("output_dir", "./output"))
     init_reporting(cfg)

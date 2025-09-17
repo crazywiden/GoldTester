@@ -1,6 +1,6 @@
 run:
-  start_date: 2015-01-01
-  end_date: 2019-12-31
+  start_date: 2024-01-01
+  end_date: 2024-03-01
   seed: 42
   price_column_for_valuation: close
 
@@ -36,9 +36,8 @@ signals:
     target_weight_rounding: 0.0001
 
 io:
-  market_data_path: data/market.csv
-  halts_path: data/halts.csv
-  output_dir: out/run_001
+  market_data_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_stock_20240101_20240601.csv
+  output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/first_test_run/out
   artifacts:
     write_trades: true
     write_positions: true

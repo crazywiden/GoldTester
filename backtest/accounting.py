@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 
 import math
 import pandas as pd
-from .types import Fill
+from backtest.types import Fill
 
 
 class Portfolio:

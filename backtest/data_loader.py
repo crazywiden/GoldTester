@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from loguru import logger
 
-from .utils import parse_date
+from backtest.utils import parse_date
 
 
 REQUIRED_COLS = ["open", "high", "low", "close", "adjusted_close", "volume"]
@@ -31,6 +31,10 @@ class DataLoader:
         return self._halts
 
     def load_market(self) -> pd.DataFrame:
+        """we expect data has the following columns:
+        
+        date, symbol, open, high, low, close, adjusted_close, volume
+        """
         path = self.cfg.get("io", {}).get("market_data_path")
         if not path or not os.path.exists(path):
             logger.error(f"Market data not found: {path}")

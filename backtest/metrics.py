@@ -5,7 +5,7 @@ from typing import Dict, List, Mapping, Any
 import numpy as np
 import pandas as pd
 
-from .utils import annual_to_daily_rate
+from backtest.utils import annual_to_daily_rate
 
 
 

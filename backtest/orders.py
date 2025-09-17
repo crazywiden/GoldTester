@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import math
 
-from .types import Order
+from backtest.types import Order
 from typing import Mapping, Any
 
 
