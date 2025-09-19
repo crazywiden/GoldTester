@@ -28,7 +28,7 @@ def run(cfg_path: str) -> None:
     portfolio = Portfolio(cfg.get("portfolio", {}).get("initial_cash", 1_000_000))
     metrics_engine = MetricsEngine(cfg)
 
-    date_list = sorted(list({row_date for row_date in data_loader.market.index.get_level_values("date").unique()}))
+    date_list = sorted(data_loader.market["date"].unique())
     if len(date_list) < 2:
         logger.error("Not enough dates to run backtest")
         return

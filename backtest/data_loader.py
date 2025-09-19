@@ -52,6 +52,10 @@ class DataLoader:
         return df
 
     def load_halts(self) -> pd.DataFrame:
+        """we expect data has the following columns:
+        
+        date, symbol, is_halted
+        """
         path = self.cfg.get("io", {}).get("halts_path")
         if not path or not os.path.exists(path):
             logger.error(f"Halts data not found: {path}")
@@ -105,10 +109,10 @@ def get_marking_series(
     if price_col not in df.columns:
         logger.error(f"Price column {price_col} not found in data")
         raise ValueError(f"Price column {price_col} not found in data")
-    prices = df[["symbol", price_col]].dropna().groupby("symbol")[price_col].first().to_dict()
+    prices = df[[price_col]].dropna().groupby(level="symbol")[price_col].first().to_dict()
     dividends = {}
     if "dividend" in df.columns:
-        dividends = df[["symbol", "dividend"]].fillna(0.0).groupby("symbol")["dividend"].first().to_dict()
+        dividends = df[["dividend"]].fillna(0.0).groupby(level="symbol")["dividend"].first().to_dict()
     prices = {k: float(v) for k, v in prices.items()}
     dividends = {k: float(v) for k, v in dividends.items()}
     return prices, dividends

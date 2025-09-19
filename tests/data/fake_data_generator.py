@@ -56,12 +56,48 @@ def generate_fake_stock_data(start_date, end_date, num_tickers, output_path):
     df.to_csv(output_path, index=False)
     print(f"Fake data generated and saved to {output_path}")
 
+
+def generate_fake_halts_data(start_date, end_date, ticker_list, output_path, halt_prob=0.001):
+    """
+    Generates a DataFrame of fake halts data and
+    saves it to a CSV file. Once a stock is halted, it cannot be relisted.
+
+    Args:
+        start_date (str): The start date in 'YYYY-MM-DD' format.
+        end_date (str): The end date in 'YYYY-MM-DD' format.
+        ticker_list (list): The list of stock tickers.
+        output_path (str): The path to save the output CSV file.
+        halt_prob (float): Daily probability of a stock being halted.
+    """
+    dates = pd.date_range(start=start_date, end=end_date)
+    halt_data = []
+    
+    for ticker in ticker_list:
+        halted = False
+        for date in dates:
+            if not halted and np.random.rand() < halt_prob:
+                halted = True
+            
+            halt_data.append({'date': date, 'symbol': ticker, 'halt': halted})
+
+    df = pd.DataFrame(halt_data)
+    df.to_csv(output_path, index=False)
+    print(f"Fake halts data generated and saved to {output_path}")
+
+
 if __name__ == "__main__":
     start_date = "2024-01-01"
     end_date = "2024-06-01"
     num_tickers = 100
     folder_path = "tests/data"
+    
+    # Generate stock data
     output_csv_name = "fake_100_stock_20240101_20240601.csv"
     output_csv_path = os.path.join(folder_path, output_csv_name)
-    
     generate_fake_stock_data(start_date, end_date, num_tickers, output_csv_path)
+
+    # Generate halts data
+    tickers = [f"TICKER_{i:03d}" for i in range(num_tickers)]
+    halts_output_csv_name = "fake_100_halts_20240101_20240601.csv"
+    halts_output_csv_path = os.path.join(folder_path, halts_output_csv_name)
+    generate_fake_halts_data(start_date, end_date, tickers, halts_output_csv_path)

@@ -37,6 +37,7 @@ signals:
 
 io:
   market_data_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_stock_20240101_20240601.csv
+  halts_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_halts_20240101_20240601.csv
   output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/first_test_run/out
   artifacts:
     write_trades: true
