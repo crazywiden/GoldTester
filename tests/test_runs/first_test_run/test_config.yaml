@@ -29,7 +29,7 @@ accounting:
     constant_annual: 0.03
 
 signals:
-  module: strategies.my_signal
+  module: strategies.volume_based
   function: compute_target_weights
   constraints:
     max_weight_per_symbol: 0.1
@@ -44,4 +44,3 @@ io:
     write_positions: true
     write_portfolio: true
     write_metrics: true
-    write_tearsheet: false

@@ -71,7 +71,6 @@ class ArtifactFlags:
     write_positions: bool
     write_portfolio: bool
     write_metrics: bool
-    write_tearsheet: bool
 
 
 def get_artifact_flags(cfg: Dict[str, Any]) -> ArtifactFlags:
@@ -82,5 +81,4 @@ def get_artifact_flags(cfg: Dict[str, Any]) -> ArtifactFlags:
         write_positions=bool(artifacts.get("write_positions", True)),
         write_portfolio=bool(artifacts.get("write_portfolio", True)),
         write_metrics=bool(artifacts.get("write_metrics", True)),
-        write_tearsheet=bool(artifacts.get("write_tearsheet", False)),
     )

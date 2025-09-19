@@ -44,4 +44,3 @@ io:
     write_positions: true
     write_portfolio: true
     write_metrics: true
-    write_tearsheet: false
