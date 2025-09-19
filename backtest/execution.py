@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import List, Mapping, Any
 
 import math
