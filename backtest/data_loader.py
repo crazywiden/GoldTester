@@ -71,6 +71,10 @@ class DataLoader:
         d = parse_date(date)
         return self.market.loc[(d, symbol)]
 
+    def get_market_data_before(self, date: pd.Timestamp) -> pd.DataFrame:
+        d = parse_date(date)
+        return self.market[self.market.index.get_level_values("date") < d]
+
     def get_adv(self, symbol: str, date: pd.Timestamp, lookback: int = 20) -> float:
         d = parse_date(date)
         start = d - pd.tseries.offsets.BDay(lookback)

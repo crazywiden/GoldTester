@@ -29,7 +29,7 @@ accounting:
     constant_annual: 0.03
 
 signals:
-  module: tests.test_runs.first_test_run.ema_trading
+  module: strategies.my_signal
   function: compute_target_weights
   constraints:
     max_weight_per_symbol: 0.1

@@ -21,7 +21,10 @@ def run(cfg_path: str) -> None:
     init_reporting(cfg)
     data_loader = DataLoader(cfg)
     signals_cfg = cfg.get("signals", {})
-    signal_function = load_user_signal(signals_cfg.get("module", "strategies.my_signal"), signals_cfg.get("function", "compute_target_weights"))
+    signal_function = load_user_signal(
+        signals_cfg.get("module", "strategies.my_signal"),
+        signals_cfg.get("function", "compute_target_weights")
+    )
     order_generator = OrderGenerator(cfg)
     execution_simulator = ExecutionSimulator(cfg, data_loader)
     portfolio = Portfolio(cfg.get("portfolio", {}).get("initial_cash", 1_000_000))
@@ -37,11 +40,12 @@ def run(cfg_path: str) -> None:
     for t0 in date_list[:-1]:
         logger.info(f"Running backtest for date {t0}")
         data_t0 = data_loader.get_slice(t0)
+        all_prev_data = data_loader.get_market_data_before(t0)
         if data_t0.empty:
             logger.warning(f"Data for date {t0} is empty, skipping")
             continue
 
-        weights = signal_function(t0, data_t0)
+        weights = signal_function(t0, data_t0, all_prev_data)
         ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg)
         target_shares = order_generator.weights_to_target_shares(weights, portfolio.equity, ref_prices)
         orders_t1 = order_generator.diff_to_orders(portfolio.shares, target_shares, ref_prices)
