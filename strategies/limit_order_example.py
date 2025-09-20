@@ -10,7 +10,8 @@ def compute_target_weights_and_orders(
     portfolio: Portfolio,
 ) -> Tuple[Dict[str, float], Dict[str, Dict[str, Any]]]:
     """
-    Example limit order strategy that demonstrates the new signal interface.
+    Example limit order strategy that demonstrates 
+    the new signal interface.
     
     Strategy logic:
     1. Select top 10 liquid stocks by volume
