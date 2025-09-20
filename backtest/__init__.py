@@ -10,6 +10,7 @@ __all__ = [
     "metrics",
     "reporting",
     "utils",
+    "risk",
 ]
 
 __version__ = "0.1.0"

@@ -91,3 +91,18 @@ class Portfolio:
 
     def get_total_shares_map(self) -> Dict[str, int]:
         return {symbol: self.get_total_shares(symbol) for symbol in self.shares.keys()}
+
+    def get_average_cost(self, symbol: str) -> float:
+        lots = self.shares.get(symbol, [])
+        total_qty = sum(int(lot["qty"]) for lot in lots)
+        if total_qty <= 0:
+            return 0.0
+        total_cost = 0.0
+        for lot in lots:
+            qty = int(lot["qty"])
+            price = float(lot["fill_price"])
+            total_cost += qty * price
+        return float(total_cost) / float(total_qty)
+
+    def get_average_cost_map(self) -> Dict[str, float]:
+        return {symbol: self.get_average_cost(symbol) for symbol in self.shares.keys()}

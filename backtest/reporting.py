@@ -74,6 +74,7 @@ def persist_snapshots(date, portfolio, fills, metrics) -> None:
             "commission": float(f.commission),
             "notional": float(f.qty) * float(f.fill_price),
             "order_id": f.order_id,
+            "order_type": getattr(f, "order_type", "MARKET"),
         })
     REPORTER.add_trades(trade_rows)
     pos_rows = []

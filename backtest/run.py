@@ -11,6 +11,7 @@ from backtest.accounting import Portfolio
 from backtest.metrics import MetricsEngine
 from backtest import reporting
 from backtest.utils import next_trading_day
+from backtest.risk import evaluate_stop_levels
 
 
 def run(cfg_path: str) -> None:
@@ -52,17 +53,46 @@ def run(cfg_path: str) -> None:
 
         weights, order_specs = signal_function(t0, data_t0, all_prev_data, portfolio)
 
-        ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg, order_specs)
-        target_shares = order_generator.weights_to_target_shares(
-            weights, portfolio.equity, ref_prices
-        )
-        orders_t1 = order_generator.diff_to_orders(
-            portfolio.get_total_shares_map(), target_shares, ref_prices, order_specs
-        )
         t1 = next_trading_day(t0, date_list)
         if t1 is None:
             logger.warning(f"No next trading day found for date {t0}, skipping")
             break
+        # Risk overlay: compute stop-loss / take-profit effect on current holdings using t1 intraday extremes
+        try:
+            data_t1 = data_loader.get_slice(t1)
+        except KeyError:
+            data_t1 = None
+
+        prices_for_risk = {}
+        intraday_high = {}
+        intraday_low = {}
+        if data_t1 is not None and not data_t1.empty:
+            price_col = cfg.get("run", {}).get("price_column_for_valuation", "close")
+            if price_col in data_t1.columns:
+                prices_for_risk = data_t1[[price_col]].dropna().groupby(level="symbol")[price_col].first().to_dict()
+            if "high" in data_t1.columns and "low" in data_t1.columns:
+                intraday_high = data_t1[["high"]].dropna().groupby(level="symbol")["high"].first().to_dict()
+                intraday_low = data_t1[["low"]].dropna().groupby(level="symbol")["low"].first().to_dict()
+
+        # Compute signal-driven target shares
+        ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg, order_specs)
+        target_shares_by_signal = order_generator.weights_to_target_shares(
+            weights, portfolio.equity, ref_prices
+        )
+
+        # Apply risk overlay to current holdings, then cap signal targets accordingly
+        target_after_risk_current = evaluate_stop_levels(
+            t1, cfg, portfolio, prices_for_risk, intraday_high or None, intraday_low or None
+        )
+        final_target_shares = dict(target_shares_by_signal)
+        for sym, cur_risk_target in target_after_risk_current.items():
+            desired = int(final_target_shares.get(sym, 0))
+            # do not exceed risk-capped target for currently held symbols
+            final_target_shares[sym] = min(desired, int(cur_risk_target))
+
+        orders_t1 = order_generator.diff_to_orders(
+            portfolio.get_total_shares_map(), final_target_shares, ref_prices, order_specs
+        )
         fills = execution_simulator.fill_orders(t1, orders_t1)
         portfolio.apply_fills(fills)
         prices_t1, dividends_t1 = get_marking_series(t1, data_loader, cfg)
