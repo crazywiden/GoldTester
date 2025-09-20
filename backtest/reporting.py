@@ -59,7 +59,12 @@ def init_reporting(cfg) -> None:
     REPORTER = _ReportWriter(cfg)
 
 
-def persist_position_map(date: pd.Timestamp, weights: Dict[str, float], target_shares: Dict[str, int], ref_prices: Dict[str, float]) -> None:
+def persist_position_map(
+    date: pd.Timestamp,
+    weights: Dict[str, float],
+    target_shares: Dict[str, int],
+    ref_prices: Dict[str, float],
+) -> None:
     if REPORTER is None:
         return
     rows = []

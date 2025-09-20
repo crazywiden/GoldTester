@@ -15,16 +15,11 @@ def compute_target_weights(
         selecting only those with volume above the median for the given day.
     2. Select the first 50 stocks from the liquid universe.
     3. Construct an equal-weighted portfolio from the selected stocks.
-    
-    Returns:
-        Dict[str, float]: A dictionary of target weights for each stock.
     """
     if df_today is None or df_today.empty:
         return {}
     liquid = df_today.dropna(subset=["volume"]).copy()
-    median_vol = 0.0
-    if not liquid.empty:
-        median_vol = float(liquid["volume"].quantile(0.5))
+    median_vol = float(liquid["volume"].quantile(0.5)) if not liquid.empty else 0.0
     liquid = liquid[liquid["volume"] > median_vol]
     picks = liquid.head(50)
     if len(picks) == 0:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 
@@ -11,6 +11,8 @@ class Order:
     side: str  # "BUY" | "SELL"
     qty: int
     ref_price: float
+    order_type: str = "MARKET"  # "MARKET" | "LIMIT"
+    limit_price: Optional[float] = None
 
 
 @dataclass
@@ -24,3 +26,4 @@ class Fill:
     fill_price: float
     slippage: float
     commission: float
+    order_type: str = "MARKET"

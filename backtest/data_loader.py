@@ -77,16 +77,22 @@ class DataLoader:
 
     def get_adv(self, symbol: str, date: pd.Timestamp, lookback: int = 20) -> float:
         d = parse_date(date)
-        start = d - pd.tseries.offsets.BDay(lookback)
+        start = pd.Timestamp(d - pd.tseries.offsets.BDay(lookback), tz=None)
+        end = d - pd.Timedelta(days=1)
         df = self.market
-        panel = df.loc[(slice(pd.Timestamp(start, tz=None), d - pd.Timedelta(days=1)), symbol), :]
+        panel = df.loc[(slice(start, end), symbol), :]
         if panel.empty or "volume" not in panel.columns:
             return 0.0
         return float(panel["volume"].tail(lookback).mean())
 
 
-def choose_ref_prices_for_next_fill(date: pd.Timestamp, data_loader: DataLoader, cfg: Mapping[str, Any]) -> Dict[str, float]:
-    method = cfg.get("execution", {}).get("order_fill_method", "next_close")
+def choose_ref_prices_for_next_fill(
+    date: pd.Timestamp,
+    data_loader: DataLoader,
+    cfg: Mapping[str, Any],
+    target_price: Optional[float] = None,
+) -> Dict[str, float]:
+    method = cfg["execution"]["order_fill_method"]
     df = data_loader.get_slice(date)
     if df.empty:
         return {}

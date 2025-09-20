@@ -38,8 +38,9 @@ def run(cfg_path: str) -> None:
     if reporting.REPORTER is None:
         logger.warning("No reporter found, skipping logging")
         return
-
-    logger.info(f"Start running backtest, start date: {cfg.get('run', {}).get('start_date')}, end date: {cfg.get('run', {}).get('end_date')}")
+    start_date = cfg.get('run', {}).get('start_date')
+    end_date = cfg.get('run', {}).get('end_date')
+    logger.info(f"Start running backtest, start date: {start_date}, end date: {end_date}")
     start_time = time.perf_counter()
     for t0 in date_list[:-1]:
         logger.info(f"Running backtest for date {t0}")
@@ -49,10 +50,23 @@ def run(cfg_path: str) -> None:
             logger.warning(f"Data for date {t0} is empty, skipping")
             continue
 
-        weights = signal_function(t0, data_t0, all_prev_data)
+        signal_result = signal_function(t0, data_t0, all_prev_data, portfolio)
+        
+        # Handle both old (weights only) and new (weights, order_specs) signal interfaces
+        if isinstance(signal_result, tuple) and len(signal_result) == 2:
+            weights, order_specs = signal_result
+        else:
+            weights = signal_result
+            order_specs = None
+        
         ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg)
-        target_shares = order_generator.weights_to_target_shares(weights, portfolio.equity, ref_prices)
-        orders_t1 = order_generator.diff_to_orders(portfolio.shares, target_shares, ref_prices)
+        target_shares = order_generator.weights_to_target_shares(
+            weights, portfolio.equity, ref_prices
+        )
+        orders_t1 = order_generator.diff_to_orders(
+            portfolio.shares, target_shares, ref_prices, order_specs
+        )
+        # assuming all orders can be filled
         reporting.persist_position_map(t0, weights, target_shares, ref_prices)
         t1 = next_trading_day(t0, date_list)
         if t1 is None:
@@ -63,8 +77,8 @@ def run(cfg_path: str) -> None:
         prices_t1, dividends_t1 = get_marking_series(t1, data_loader, cfg)
         prev_equity = float(portfolio.equity)
         portfolio.mark_to_market(prices_t1, dividends_t1)
-        kpis = metrics_engine.update(t1, portfolio.equity, prev_equity)
-        reporting.persist_snapshots(t1, portfolio, fills, kpis)
+        metrics = metrics_engine.update(t1, portfolio.equity, prev_equity)
+        reporting.persist_snapshots(t1, portfolio, fills, metrics)
         
     time_used = time.perf_counter() - start_time
     logger.info(f"Backtest finished, time used: {time_used} seconds")
