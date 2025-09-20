@@ -47,7 +47,7 @@ def compute_target_weights_and_orders(
         weights[symbol] = weight_per_stock
         
         # Determine if we're buying or selling based on current position
-        current_shares = portfolio.shares.get(symbol, 0)
+        current_shares = portfolio.get_total_shares(symbol)
         
         if current_shares == 0:
             # New position - place aggressive limit buy at 2% below close
@@ -64,17 +64,3 @@ def compute_target_weights_and_orders(
             }
     
     return weights, order_specs
-
-
-def compute_target_weights(
-    date,
-    df_today: pd.DataFrame,
-    df_prev: pd.DataFrame,
-    portfolio: Portfolio,
-) -> Dict[str, float]:
-    """
-    Backward-compatible version that only returns weights (market orders).
-    This demonstrates that old strategies continue to work.
-    """
-    weights, _ = compute_target_weights_and_orders(date, df_today, df_prev, portfolio)
-    return weights

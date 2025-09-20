@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Any, Mapping
-
 import math
+from loguru import logger
+from typing import Dict, List, Optional, Any, Mapping
 
 from backtest.types import Order
 
@@ -21,6 +21,7 @@ class OrderGenerator:
             money_allocated = weights[symbol] * available_equity
             symbol_price = price_map[symbol]
             if symbol_price == 0:
+                logger.warning(f"Price for {symbol} is 0, skipping")
                 raw_shares[symbol] = 0
                 continue
             raw_shares[symbol] = int(math.floor(money_allocated / symbol_price))

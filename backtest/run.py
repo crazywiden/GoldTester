@@ -38,8 +38,8 @@ def run(cfg_path: str) -> None:
     if reporting.REPORTER is None:
         logger.warning("No reporter found, skipping logging")
         return
-    start_date = cfg.get('run', {}).get('start_date')
-    end_date = cfg.get('run', {}).get('end_date')
+    start_date = cfg.get("run", {}).get("start_date")
+    end_date = cfg.get("run", {}).get("end_date")
     logger.info(f"Start running backtest, start date: {start_date}, end date: {end_date}")
     start_time = time.perf_counter()
     for t0 in date_list[:-1]:
@@ -50,24 +50,15 @@ def run(cfg_path: str) -> None:
             logger.warning(f"Data for date {t0} is empty, skipping")
             continue
 
-        signal_result = signal_function(t0, data_t0, all_prev_data, portfolio)
-        
-        # Handle both old (weights only) and new (weights, order_specs) signal interfaces
-        if isinstance(signal_result, tuple) and len(signal_result) == 2:
-            weights, order_specs = signal_result
-        else:
-            weights = signal_result
-            order_specs = None
-        
-        ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg)
+        weights, order_specs = signal_function(t0, data_t0, all_prev_data, portfolio)
+
+        ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg, order_specs)
         target_shares = order_generator.weights_to_target_shares(
             weights, portfolio.equity, ref_prices
         )
         orders_t1 = order_generator.diff_to_orders(
-            portfolio.shares, target_shares, ref_prices, order_specs
+            portfolio.get_total_shares_map(), target_shares, ref_prices, order_specs
         )
-        # assuming all orders can be filled
-        reporting.persist_position_map(t0, weights, target_shares, ref_prices)
         t1 = next_trading_day(t0, date_list)
         if t1 is None:
             logger.warning(f"No next trading day found for date {t0}, skipping")

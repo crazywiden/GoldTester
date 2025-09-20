@@ -46,9 +46,6 @@ class _ReportWriter:
         if bool(flags.get("write_metrics", True)) and self.metrics_rows:
             df = pd.DataFrame(self.metrics_rows)
             write_csv(df, f"{outdir}/metrics.csv")
-        if self.position_map_rows and True:
-            df = pd.DataFrame(self.position_map_rows)
-            write_csv(df, f"{outdir}/position_map.csv")
 
 
 REPORTER: Optional[_ReportWriter] = None
@@ -59,28 +56,7 @@ def init_reporting(cfg) -> None:
     REPORTER = _ReportWriter(cfg)
 
 
-def persist_position_map(
-    date: pd.Timestamp,
-    weights: Dict[str, float],
-    target_shares: Dict[str, int],
-    ref_prices: Dict[str, float],
-) -> None:
-    if REPORTER is None:
-        return
-    rows = []
-    for sym, w in weights.items():
-        rows.append({
-            "date": date,
-            "symbol": sym,
-            "target_weight": float(w),
-            "target_shares": int(target_shares.get(sym, 0)),
-            "ref_price": float(ref_prices.get(sym, 0.0)),
-            "notes": "",
-        })
-    REPORTER.add_position_map(rows)
-
-
-def persist_snapshots(date, portfolio, fills, kpis) -> None:
+def persist_snapshots(date, portfolio, fills, metrics) -> None:
     if REPORTER is None:
         return
     # trades
@@ -101,7 +77,8 @@ def persist_snapshots(date, portfolio, fills, kpis) -> None:
         })
     REPORTER.add_trades(trade_rows)
     pos_rows = []
-    for sym, qty in portfolio.shares.items():
+    for sym in portfolio.shares.keys():
+        qty = portfolio.get_total_shares(sym)
         pos_rows.append({
             "date": date,
             "symbol": sym,
@@ -109,4 +86,4 @@ def persist_snapshots(date, portfolio, fills, kpis) -> None:
         })
     REPORTER.add_positions(pos_rows)
     REPORTER.add_portfolio(portfolio.snapshot(date))
-    REPORTER.add_metrics(kpis)
+    REPORTER.add_metrics(metrics)

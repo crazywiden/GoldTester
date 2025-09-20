@@ -70,6 +70,7 @@ class ExecutionSimulator:
             if not day_halts.empty:
                 halted_symbols = set(day_halts[day_halts["is_halted"] == True]["symbol"].tolist())
         except KeyError:
+            logger.warning(f"Halt data not found for date: {date}, skipping halt check")
             pass
         fills = []
         for idx, order in enumerate(orders):
@@ -90,7 +91,6 @@ class ExecutionSimulator:
                 continue
             # Handle limit vs market orders
             if order.order_type == "LIMIT" and order.limit_price is not None:
-                # Check if limit order can be filled within [low, high] range
                 high = float(bar_today.get("high", float("nan")))
                 low = float(bar_today.get("low", float("nan")))
                 
@@ -100,14 +100,17 @@ class ExecutionSimulator:
                 
                 can_fill = False
                 if order.side.upper() == "BUY":
-                    # Buy limit order: can fill if limit_price >= low
+                    # we can fill if limit_price >= low
                     can_fill = order.limit_price >= low
                 else:
-                    # Sell limit order: can fill if limit_price <= high  
+                    # we can fill if limit_price <= high  
                     can_fill = order.limit_price <= high
                 
                 if not can_fill:
-                    logger.info(f"Limit order cannot be filled: {order.side} {symbol} at {order.limit_price}, range [{low}, {high}]")
+                    logger.info(
+                        f"Limit order cannot be filled: {order.side} {symbol} at {order.limit_price}, "
+                        f"range [{low}, {high}], abort execution"
+                    )
                     continue
                 
                 # Use limit price as fill price for limit orders
@@ -127,7 +130,7 @@ class ExecutionSimulator:
                 )
                 fills.append(fill)
             else:
-                # Market order - existing logic
+                # Market order - use predefined logic in configuration
                 base_price = self._base_fill_price(date, symbol)
                 if base_price == float("nan"):
                     logger.error(f"Base fill price is NaN, skipping execution for date: {date}, symbol: {symbol}")

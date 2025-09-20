@@ -90,19 +90,37 @@ def choose_ref_prices_for_next_fill(
     date: pd.Timestamp,
     data_loader: DataLoader,
     cfg: Mapping[str, Any],
-    target_price: Optional[float] = None,
+    order_specs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, float]:
+    """Choose per-symbol reference prices for sizing and order generation.
+
+    Behavior:
+    - For MARKET orders (or when no spec provided), use the configured base price
+      derived from the data slice at the given date.
+    - For LIMIT orders (when provided via order_specs), use the provided limit_price
+      as the reference price for that symbol.
+    """
     method = cfg["execution"]["order_fill_method"]
     df = data_loader.get_slice(date)
     if df.empty:
         return {}
-    if method in ("next_open", "next_close"):
+    if method == "next_open":
+        base = df["open"]
+    elif method == "next_close":
         base = df["close"]
     elif method == "vwap_proxy":
         base = (df["high"] + df["low"] + df["close"]) / 3.0
     else:
         base = df["close"]
-    return {sym: float(p) for sym, p in base.groupby(df["symbol"]).first().items()}
+    ref_map = {sym: float(p) for sym, p in base.groupby(df["symbol"]).first().items()}
+
+    # update reference prices from order_specs
+    if order_specs:
+        for symbol, spec in order_specs.items():
+            order_type = spec.get("order_type", "MARKET").upper()
+            if order_type == "LIMIT":
+                ref_map[symbol] = spec.get("limit_price")
+    return ref_map
 
 
 def get_marking_series(

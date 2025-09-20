@@ -27,3 +27,10 @@ class Fill:
     slippage: float
     commission: float
     order_type: str = "MARKET"
+
+
+@dataclass
+class Lot:
+    date_acquired: pd.Timestamp
+    qty: int
+    fill_price: float

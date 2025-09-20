@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
 import math
 import pandas as pd
@@ -9,7 +9,8 @@ class Portfolio:
     def __init__(self, initial_cash: float):
         self.initial_cash: float = float(initial_cash)
         self.cash: float = float(initial_cash)
-        self.shares: Dict[str, int] = {}
+        # symbol -> list of lots; each lot is {"date": pd.Timestamp, "qty": int, "fill_price": float}
+        self.shares: Dict[str, List[Dict[str, Any]]] = {}
         self.market_value: float = 0.0
         self.equity: float = float(initial_cash)
 
@@ -18,26 +19,58 @@ class Portfolio:
             qty = int(f.qty)
             price = float(f.fill_price)
             commission = float(f.commission)
-            if f.side.upper() == "BUY":
+            symbol = f.symbol
+            side = f.side.upper()
+            if side == "BUY":
+                # Pay cash and add a new lot
                 self.cash -= qty * price
                 self.cash -= commission
-                self.shares[f.symbol] = int(self.shares.get(f.symbol, 0) + qty)
+                lots = self.shares.setdefault(symbol, [])
+                lots.append({
+                    "date": f.date,
+                    "qty": int(qty),
+                    "fill_price": float(price),
+                })
             else:
+                # Receive cash and reduce existing lots FIFO
                 self.cash += qty * price
                 self.cash -= commission
-                self.shares[f.symbol] = int(self.shares.get(f.symbol, 0) - qty)
-                if self.shares[f.symbol] == 0:
-                    self.shares.pop(f.symbol, None)
+                lots = self.shares.get(symbol, [])
+                remaining = qty
+                new_lots: List[Dict[str, Any]] = []
+                for lot in lots:
+                    if remaining <= 0:
+                        new_lots.append(lot)
+                        continue
+                    lot_qty = int(lot["qty"])
+                    if lot_qty <= remaining:
+                        # consume entire lot
+                        remaining -= lot_qty
+                        continue
+                    else:
+                        # partially reduce this lot
+                        lot_copy = dict(lot)
+                        lot_copy["qty"] = int(lot_qty - remaining)
+                        remaining = 0
+                        new_lots.append(lot_copy)
+                if new_lots:
+                    self.shares[symbol] = new_lots
+                else:
+                    # remove symbol if no lots left
+                    self.shares.pop(symbol, None)
 
     def mark_to_market(self, prices: Dict[str, float], dividends: Dict[str, float]) -> None:
-        for symbol, qty in list(self.shares.items()):
+        # credit dividends
+        for symbol, lots in list(self.shares.items()):
+            total_qty = sum(int(lot["qty"]) for lot in lots)
             div = float(dividends.get(symbol, 0.0))
-            if div:
-                self.cash += float(qty) * div
+            if div and total_qty:
+                self.cash += float(total_qty) * div
         self.market_value = 0.0
-        for symbol, qty in self.shares.items():
+        for symbol, lots in self.shares.items():
             pos = float(prices.get(symbol, 0.0))
-            self.market_value += float(qty) * pos
+            total_qty = sum(int(lot["qty"]) for lot in lots)
+            self.market_value += float(total_qty) * pos
         self.equity = self.cash + self.market_value
 
     def snapshot(self, date: pd.Timestamp) -> Dict[str, float]:
@@ -51,3 +84,10 @@ class Portfolio:
             "gross_exposure": float(self.market_value),
             "net_exposure": float(self.market_value),
         }
+
+    def get_total_shares(self, symbol: str) -> int:
+        lots = self.shares.get(symbol, [])
+        return int(sum(int(lot["qty"]) for lot in lots))
+
+    def get_total_shares_map(self) -> Dict[str, int]:
+        return {symbol: self.get_total_shares(symbol) for symbol in self.shares.keys()}

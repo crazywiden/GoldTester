@@ -1,0 +1,42 @@
+run:
+  start_date: 2024-01-01
+  end_date: 2024-03-01
+  seed: 42
+  price_column_for_valuation: close
+
+portfolio:
+  initial_cash: 1000000.0
+  allow_short: false
+  max_leverage: 1.0
+
+execution:
+  order_fill_method: target_price
+  slippage_model:
+    type: bps_per_turnover
+    bps_per_1x_turnover: 10
+  commission_model:
+    type: per_share
+    per_share: 0.005
+    min_per_order: 1.0
+  allow_partial_fills: true
+  max_participation_adv: 0.1
+  respect_delisting: true
+
+accounting:
+  risk_free_rate:
+    mode: constant
+    constant_annual: 0.03
+
+signals:
+  module: strategies.limit_order_example
+  function: compute_target_weights_and_orders
+
+io:
+  market_data_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_stock_20240101_20240601.csv
+  halts_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_halts_20240101_20240601.csv
+  output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/limit_order_test/out
+  artifacts:
+    write_trades: true
+    write_positions: true
+    write_portfolio: true
+    write_metrics: true
