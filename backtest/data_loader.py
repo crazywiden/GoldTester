@@ -7,7 +7,7 @@ from loguru import logger
 from backtest.utils import parse_date
 
 
-REQUIRED_COLS = ["open", "high", "low", "close", "adjusted_close", "volume"]
+REQUIRED_COLS = ["open", "high", "low", "close", "volume"]
 
 
 class DataLoader:
@@ -31,7 +31,7 @@ class DataLoader:
     def load_market(self) -> pd.DataFrame:
         """we expect data has the following columns:
         
-        date, symbol, open, high, low, close, adjusted_close, volume
+        date, symbol, open, high, low, close, volume
         """
         path = self.cfg.get("io", {}).get("market_data_path")
         if not path or not os.path.exists(path):
@@ -43,7 +43,11 @@ class DataLoader:
             logger.error(f"Market data missing columns: {missing}")
             raise FileNotFoundError(f"Market data missing columns: {missing}")
 
-        df["date"] = pd.to_datetime(df["date"]).dt.normalize()
+        df["date"] = pd.to_datetime(
+            df["date"],
+            errors="coerce",
+            utc=True
+        ).dt.tz_convert("America/New_York")
         if "delisting_date" in df.columns:
             df["delisting_date"] = pd.to_datetime(df["delisting_date"]).dt.normalize()
         df = df.sort_values(["date", "symbol"]).set_index(["date", "symbol"], drop=False)

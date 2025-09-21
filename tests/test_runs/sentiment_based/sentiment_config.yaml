@@ -31,7 +31,7 @@ signals:
   function: compute_target_weights
 
 io:
-  market_data_path: /Users/widen/Documents/study/quant/consolidated_raw_data_beyond_2b_enough_data.csv
+  market_data_path: /Users/widen/Documents/study/quant/consolidated_raw_data_0_01_sample_by_ticker.csv
   output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/sentiment_based/out
   artifacts:
     write_trades: true
