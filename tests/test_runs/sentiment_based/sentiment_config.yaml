@@ -38,3 +38,4 @@ io:
     write_positions: true
     write_portfolio: true
     write_metrics: true
+  open_positions_html: true
