@@ -51,7 +51,9 @@ def run(cfg_path: str) -> None:
             logger.warning(f"Data for date {t0} is empty, skipping")
             continue
 
-        weights, order_specs = signal_function(t0, data_t0, all_prev_data, portfolio)
+        weights, order_specs = signal_function(
+            t0, data_t0, all_prev_data, portfolio
+        )
 
         t1 = next_trading_day(t0, date_list)
         if t1 is None:
@@ -69,10 +71,10 @@ def run(cfg_path: str) -> None:
         if data_t1 is not None and not data_t1.empty:
             price_col = cfg.get("run", {}).get("price_column_for_valuation", "close")
             if price_col in data_t1.columns:
-                prices_for_risk = data_t1[[price_col]].dropna().groupby(level="symbol")[price_col].first().to_dict()
+                prices_for_risk = data_t1[["symbol", price_col]].dropna().groupby("symbol")[price_col].first().to_dict()
             if "high" in data_t1.columns and "low" in data_t1.columns:
-                intraday_high = data_t1[["high"]].dropna().groupby(level="symbol")["high"].first().to_dict()
-                intraday_low = data_t1[["low"]].dropna().groupby(level="symbol")["low"].first().to_dict()
+                intraday_high = data_t1[["symbol", "high"]].dropna().groupby("symbol")["high"].first().to_dict()
+                intraday_low = data_t1[["symbol", "low"]].dropna().groupby("symbol")["low"].first().to_dict()
 
         # Compute signal-driven target shares
         ref_prices = choose_ref_prices_for_next_fill(t0, data_loader, cfg, order_specs)

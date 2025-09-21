@@ -14,6 +14,14 @@ def sample_csv(
     print(f"Reading from {input_path}...")
     df = pd.read_csv(input_path)
 
+    print("Filtering data to be >= 2010")
+    df['date'] = pd.to_datetime(
+        df["date"],
+        errors="coerce",
+        utc=True,
+    ).dt.tz_convert("America/New_York")
+    df = df[df['date'].dt.year >= 2010]
+
     if sample_by_column:
         unique_values = df[sample_by_column].unique()
         n_unique = len(unique_values)
@@ -37,6 +45,7 @@ def sample_csv(
     
     print(f"Writing sample of shape {sample_df.shape} to {output_path}...")
     sample_df.dropna(subset=['date'], inplace=True)
+    
     sample_df.to_csv(output_path, index=False)
     print("Done.")
 

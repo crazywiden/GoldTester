@@ -73,10 +73,12 @@ class ExecutionSimulator:
             halts = pd.DataFrame()
         halted_symbols = set()
         try:
-            day_halts = halts.loc[(date,), :]
+            # halts uses naive normalized dates; convert runtime date accordingly
+            date_day = pd.Timestamp(date).tz_localize(None).normalize()
+            day_halts = halts[halts["date"] == date_day]
             if not day_halts.empty:
-                halted_symbols = set(day_halts[day_halts["is_halted"] == True]["symbol"].tolist())
-        except KeyError:
+                halted_symbols = set(day_halts.loc[day_halts["is_halted"] == True, "symbol"].tolist())
+        except Exception:
             logger.warning(f"Halt data not found for date: {date}, skipping halt check")
             pass
 

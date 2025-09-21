@@ -50,7 +50,7 @@ class DataLoader:
         ).dt.tz_convert("America/New_York")
         if "delisting_date" in df.columns:
             df["delisting_date"] = pd.to_datetime(df["delisting_date"]).dt.normalize()
-        df = df.sort_values(["date", "symbol"]).set_index(["date", "symbol"], drop=False)
+        df = df.sort_values(["date", "symbol"])  # Keep columns; do not set MultiIndex
         return df
 
     def load_halts(self) -> pd.DataFrame:
@@ -64,27 +64,37 @@ class DataLoader:
             raise FileNotFoundError(f"Halts data not found: {path}")
         df = pd.read_csv(path)
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
-        df = df.sort_values(["date", "symbol"]).set_index(["date", "symbol"], drop=False)
+        df = df.sort_values(["date", "symbol"])  # Keep columns; do not set MultiIndex
         return df
 
     def get_slice(self, date: pd.Timestamp) -> pd.DataFrame:
         d = parse_date(date)
-        return self.market.loc[(d,), :]
+        df = self.market
+        return df[df["date"] == d]
 
     def get_bar(self, date: pd.Timestamp, symbol: str) -> Optional[pd.Series]:
         d = parse_date(date)
-        return self.market.loc[(d, symbol)]
+        df = self.market
+        rows = df[(df["date"] == d) & (df["symbol"] == symbol)]
+        if rows.empty:
+            return None
+        return rows.iloc[0]
 
     def get_market_data_before(self, date: pd.Timestamp) -> pd.DataFrame:
         d = parse_date(date)
-        return self.market[self.market.index.get_level_values("date") < d]
+        return self.market[self.market["date"] < d]
 
     def get_adv(self, symbol: str, date: pd.Timestamp, lookback: int = 20) -> float:
         d = parse_date(date)
         start = pd.Timestamp(d - pd.tseries.offsets.BDay(lookback), tz=None)
-        end = d - pd.Timedelta(days=1)
+        end = (d - pd.Timedelta(days=1)).tz_localize(None)
         df = self.market
-        panel = df.loc[(slice(start, end), symbol), :]
+        if "date" not in df.columns:
+            return 0.0
+        # Compare on naive dates to avoid tz issues
+        date_naive = df["date"].dt.tz_localize(None)
+        mask = (df["symbol"] == symbol) & (date_naive >= start) & (date_naive <= end)
+        panel = df.loc[mask]
         if panel.empty or "volume" not in panel.columns:
             return 0.0
         return float(panel["volume"].tail(lookback).mean())
@@ -139,10 +149,10 @@ def get_marking_series(
     if price_col not in df.columns:
         logger.error(f"Price column {price_col} not found in data")
         raise ValueError(f"Price column {price_col} not found in data")
-    prices = df[[price_col]].dropna().groupby(level="symbol")[price_col].first().to_dict()
+    prices = df[[price_col]].dropna().groupby(df["symbol"])[price_col].first().to_dict()
     dividends = {}
     if "dividend" in df.columns:
-        dividends = df[["dividend"]].fillna(0.0).groupby(level="symbol")["dividend"].first().to_dict()
+        dividends = df[["dividend"]].fillna(0.0).groupby(df["symbol"])["dividend"].first().to_dict()
     prices = {k: float(v) for k, v in prices.items()}
     dividends = {k: float(v) for k, v in dividends.items()}
     return prices, dividends

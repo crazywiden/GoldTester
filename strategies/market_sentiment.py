@@ -52,8 +52,13 @@ def get_return_in_n_days(
     df_prev: pd.DataFrame,
     n_days: int,
 ) -> pd.DataFrame:
-    date_n_days_ago = df_today["date"] - pd.Timedelta(days=n_days)
+    date_n_days_ago = df_today["date"].iloc[0] - pd.Timedelta(days=n_days)
     df_n_days_ago = df_prev[df_prev["date"] == date_n_days_ago]
+
+    if df_n_days_ago is None or df_n_days_ago.empty:
+        logger.warning(f"No data for {date_n_days_ago}")
+        return pd.DataFrame()
+
     today_close = (
         df_today[["symbol", "close"]]
         .dropna(subset=["symbol", "close"])
@@ -80,6 +85,9 @@ def compute_target_weights(
     portfolio: Portfolio,
 ) -> Tuple[Dict[str, float], Dict[str, Dict[str, Any]]]:
     if df_today is None or df_today.empty:
+        return {}, {}
+
+    if df_prev is None or df_prev.empty:
         return {}, {}
 
     shares_map = portfolio.get_total_shares_map()
@@ -132,14 +140,20 @@ def compute_target_weights(
         logger.warning(f"No stocks in the whitelist at {date}")
         return {}, {}
 
-    candidate_df_today = df_today[df_today.index.isin(candidates.index)]
-    candidate_df_prev = df_prev[df_prev.index.isin(candidates.index)]
+    candidate_symbols = candidates.index
+    candidate_df_today = df_today[df_today["symbol"].isin(candidate_symbols)]
+    candidate_df_prev = df_prev[df_prev["symbol"].isin(candidate_symbols)]
     candidate_return_df = get_return_in_n_days(
         candidate_df_today,
         candidate_df_prev,
         D_LOOKBACK_DAYS,
     )
-    joined = candidate_return_df.sort_values(["return"], ascending=False)
+    if candidate_return_df.empty:
+        logger.warning(f"we don't have enought data for {date}")
+        return {}, {}
+    joined = candidate_return_df.sort_values(
+        ["return"], ascending=False
+    )
     chosen_symbol = joined.index[0]
 
     weights = {chosen_symbol: 1.0}
