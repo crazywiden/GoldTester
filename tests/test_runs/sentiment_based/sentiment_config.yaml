@@ -19,7 +19,7 @@ execution:
     per_share: 0
     min_per_order: 1.0
   allow_partial_fills: true
-  respect_delisting: true
+  respect_delisting: false
 
 accounting:
   risk_free_rate:
@@ -31,8 +31,7 @@ signals:
   function: compute_target_weights
 
 io:
-  market_data_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_stock_20240101_20240601.csv
-  halts_path: /Users/widen/Documents/study/quant/GoldTester/tests/data/fake_100_halts_20240101_20240601.csv
+  market_data_path: /Users/widen/Documents/study/quant/consolidated_raw_data_beyond_2b_enough_data.csv
   output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/sentiment_based/out
   artifacts:
     write_trades: true

@@ -59,11 +59,18 @@ class ExecutionSimulator:
             return float(typical_price(bar.get("high", float("nan")), bar.get("low", float("nan")), bar.get("close", float("nan"))))
         return float(bar.get("close", float("nan")))
 
-    def fill_orders(self, date: pd.Timestamp, orders: List[Order]) -> List[Fill]:
+    def fill_orders(
+        self,
+        date: pd.Timestamp,
+        orders: List[Order],
+    ) -> List[Fill]:
         if not orders:
             return []
         # Halts for date
-        halts = self.data_loader.halts
+        if self.cfg["execution"].get("respect_delisting", True):
+            halts = self.data_loader.halts
+        else:
+            halts = pd.DataFrame()
         halted_symbols = set()
         try:
             day_halts = halts.loc[(date,), :]
@@ -72,6 +79,7 @@ class ExecutionSimulator:
         except KeyError:
             logger.warning(f"Halt data not found for date: {date}, skipping halt check")
             pass
+
         fills = []
         for idx, order in enumerate(orders):
             symbol = order.symbol
