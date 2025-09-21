@@ -85,6 +85,45 @@ class _ReportWriter:
                 y_json = json.dumps([float(v) for v in market_values])
                 y2_json = json.dumps([int(v) for v in position_counts]) if position_counts else "null"
                 has_y2_bool = bool(position_counts)
+                # Prepare metrics summary (Sharpe, total return, max drawdown, variance)
+                stats_html = ""
+                if self.metrics_rows:
+                    try:
+                        mdf = pd.DataFrame(self.metrics_rows)
+                        # Expect columns from MetricsEngine.update
+                        sharpe_itd = float(mdf["sharpe_itd"].iloc[-1]) if "sharpe_itd" in mdf.columns and not mdf.empty else 0.0
+                        total_return = float(mdf["cumulative_return"].iloc[-1]) if "cumulative_return" in mdf.columns and not mdf.empty else 0.0
+                        max_dd = float(mdf["max_drawdown"].min()) if "max_drawdown" in mdf.columns and not mdf.empty else 0.0
+                        # daily return variance
+                        variance_ret = float(pd.Series(mdf.get("daily_return", pd.Series([], dtype=float))).astype(float).var(ddof=1)) if "daily_return" in mdf.columns and len(mdf["daily_return"]) > 1 else 0.0
+                        # Build HTML table
+                        stats_html = (
+                            "<table class=\"stats\">"
+                            "<thead><tr><th>Metric</th><th>Value</th></tr></thead>"
+                            "<tbody>"
+                            f"<tr><td>Sharpe Ratio (ITD)</td><td>{sharpe_itd:.3f}</td></tr>"
+                            f"<tr><td>Total Return</td><td>{total_return:.2%}</td></tr>"
+                            f"<tr><td>Max Drawdown</td><td>{max_dd:.2%}</td></tr>"
+                            f"<tr><td>Return Variance (daily)</td><td>{variance_ret:.6f}</td></tr>"
+                            "</tbody></table>"
+                        )
+                    except Exception:
+                        stats_html = ""
+
+                # Prepare daily returns series
+                ret_dates_str: List[str] = []
+                ret_values: List[float] = []
+                if self.metrics_rows:
+                    try:
+                        mdf = pd.DataFrame(self.metrics_rows)
+                        if "date" in mdf.columns and "daily_return" in mdf.columns and not mdf.empty:
+                            mdf = mdf.sort_values("date")
+                            ret_dates_str = mdf["date"].astype(str).tolist()
+                            ret_values = mdf["daily_return"].astype(float).tolist()
+                    except Exception:
+                        ret_dates_str = []
+                        ret_values = []
+
                 html = render_positions_html(
                     chart_title=chart_title,
                     plotly_cdn=plotly_cdn,
@@ -92,6 +131,10 @@ class _ReportWriter:
                     y_json=y_json,
                     y2_json=y2_json,
                     has_y2=has_y2_bool,
+                    stats_html=stats_html,
+                    ret_x_json=json.dumps(ret_dates_str) if ret_dates_str else "[]",
+                    ret_y_json=json.dumps([float(v) for v in ret_values]) if ret_values else "[]",
+                    has_returns=bool(ret_values),
                 )
                 with open(html_out, "w", encoding="utf-8") as f:
                     f.write(html)
