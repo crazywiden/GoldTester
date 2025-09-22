@@ -3,7 +3,7 @@ import pandas as pd
 from unittest.mock import Mock, MagicMock
 from typing import Dict, Any
 
-from backtest.types import Order, Fill
+from backtest.backtest_types import Order, Fill
 from backtest.orders import OrderGenerator
 from backtest.execution import ExecutionSimulator
 from backtest.data_loader import DataLoader

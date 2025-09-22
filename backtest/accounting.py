@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Any
 
 import math
 import pandas as pd
-from backtest.types import Fill
+from backtest.backtest_types import Fill
 
 
 class Portfolio:
