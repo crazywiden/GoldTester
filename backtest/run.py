@@ -1,6 +1,7 @@
 import time
 import argparse
 
+
 from loguru import logger
 from backtest.utils import load_yaml, seed_everything, ensure_dir
 from backtest.data_loader import DataLoader, choose_ref_prices_for_next_fill, get_marking_series
@@ -10,7 +11,7 @@ from backtest.execution import ExecutionSimulator
 from backtest.accounting import Portfolio
 from backtest.metrics import MetricsEngine
 from backtest import reporting
-from backtest.utils import next_trading_day
+import backtest.utils as utils
 from backtest.risk import evaluate_stop_levels
 
 
@@ -43,7 +44,8 @@ def run(cfg_path: str) -> None:
     end_date = cfg.get("run", {}).get("end_date")
     logger.info(f"Start running backtest, start date: {start_date}, end date: {end_date}")
     start_time = time.perf_counter()
-    for t0 in date_list[:-1]:
+    all_trading_days = utils.get_all_trading_days(start_date, end_date)
+    for t0 in all_trading_days:
         logger.info(f"Running backtest for date {t0}")
         data_t0 = data_loader.get_slice(t0)
         all_prev_data = data_loader.get_market_data_before(t0)
@@ -55,7 +57,7 @@ def run(cfg_path: str) -> None:
             t0, data_t0, all_prev_data, portfolio
         )
 
-        t1 = next_trading_day(t0, date_list)
+        t1 = utils.next_trading_day(t0, date_list)
         if t1 is None:
             logger.warning(f"No next trading day found for date {t0}, skipping")
             break

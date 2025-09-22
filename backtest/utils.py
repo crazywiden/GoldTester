@@ -1,13 +1,13 @@
 import os
 import random
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence, Dict
+from typing import Any, Mapping, Optional, Sequence, Dict, Union
 
 import numpy as np
 import pandas as pd
 import yaml
 from loguru import logger
-
+import pandas_market_calendars as mcal  # type: ignore
 
 def load_yaml(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
@@ -82,3 +82,37 @@ def get_artifact_flags(cfg: Dict[str, Any]) -> ArtifactFlags:
         write_portfolio=bool(artifacts.get("write_portfolio", True)),
         write_metrics=bool(artifacts.get("write_metrics", True)),
     )
+
+
+def get_all_trading_days(
+    start_date: str,
+    end_date: str,
+    calendar: str = "NYSE",
+    tz: str = "America/New_York",
+    as_datetime64: bool = False,
+) -> Sequence[Union[pd.Timestamp, np.datetime64]]:
+    """Return trading days in [start_date, end_date] aligned to market tz.
+
+    By default returns tz-aware pd.Timestamp normalized to midnight in the
+    provided timezone (default "America/New_York"). Set as_datetime64=True to
+    return numpy.datetime64 values (naive, local-time without tz).
+    """
+    start = parse_date(start_date)
+    end = parse_date(end_date)
+
+    if end < start:
+        raise ValueError("end_date must be on or after start_date")
+
+    cal = mcal.get_calendar(calendar)
+    valid = cal.valid_days(start_date=start, end_date=end)
+    idx = pd.DatetimeIndex(valid)
+    # Convert the exchange schedule (typically UTC) into the desired market tz
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC").tz_convert(tz)
+    else:
+        idx = idx.tz_convert(tz)
+
+    ts_days = [pd.Timestamp(d).normalize() for d in idx]
+    if as_datetime64:
+        return [t.tz_localize(None).to_datetime64() for t in ts_days]
+    return ts_days
