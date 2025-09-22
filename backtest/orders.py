@@ -2,7 +2,7 @@ import math
 from loguru import logger
 from typing import Dict, List, Optional, Any, Mapping
 
-from backtest.types import Order
+from backtest.backtest_types import Order
 
 
 class OrderGenerator:

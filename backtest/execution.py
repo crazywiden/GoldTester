@@ -4,7 +4,7 @@ import math
 import pandas as pd
 from loguru import logger
 
-from backtest.types import Order, Fill
+from backtest.backtest_types import Order, Fill
 from backtest.utils import typical_price
 from backtest.data_loader import DataLoader
 

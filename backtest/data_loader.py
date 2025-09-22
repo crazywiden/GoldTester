@@ -70,19 +70,22 @@ class DataLoader:
     def get_slice(self, date: pd.Timestamp) -> pd.DataFrame:
         d = parse_date(date)
         df = self.market
-        return df[df["date"] == d]
+        # Handle timezone mismatch: compare date parts only
+        return df[df["date"].dt.date == d.date()]
 
     def get_bar(self, date: pd.Timestamp, symbol: str) -> Optional[pd.Series]:
         d = parse_date(date)
         df = self.market
-        rows = df[(df["date"] == d) & (df["symbol"] == symbol)]
+        # Handle timezone mismatch: compare date parts only
+        rows = df[(df["date"].dt.date == d.date()) & (df["symbol"] == symbol)]
         if rows.empty:
             return None
         return rows.iloc[0]
 
     def get_market_data_before(self, date: pd.Timestamp) -> pd.DataFrame:
         d = parse_date(date)
-        return self.market[self.market["date"] < d]
+        # Handle timezone mismatch: compare date parts only
+        return self.market[self.market["date"].dt.date < d.date()]
 
     def get_adv(self, symbol: str, date: pd.Timestamp, lookback: int = 20) -> float:
         d = parse_date(date)
@@ -91,9 +94,10 @@ class DataLoader:
         df = self.market
         if "date" not in df.columns:
             return 0.0
-        # Compare on naive dates to avoid tz issues
-        date_naive = df["date"].dt.tz_localize(None)
-        mask = (df["symbol"] == symbol) & (date_naive >= start) & (date_naive <= end)
+        # Handle timezone mismatch: compare date parts only
+        start_date = start.date()
+        end_date = end.date()
+        mask = (df["symbol"] == symbol) & (df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)
         panel = df.loc[mask]
         if panel.empty or "volume" not in panel.columns:
             return 0.0
