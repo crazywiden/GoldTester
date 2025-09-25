@@ -77,6 +77,105 @@ class _ReportWriter:
                     )
                     position_counts = [int(pos_counts_map.get(d, 0)) for d in dates_str]
 
+            # Build Filled Orders HTML table with FIFO cost basis/positions and total equity
+            orders_html = "<p>No filled orders.</p>"
+            if self.trades_rows:
+                try:
+                    trades_df = pd.DataFrame(self.trades_rows)
+                    # Ensure required columns
+                    required_cols = {"date", "symbol", "side", "qty", "fill_price"}
+                    if required_cols.issubset(set(trades_df.columns)):
+                        trades_df = trades_df.sort_values(["date", "symbol"]).reset_index(drop=True)
+                        # Map date -> total equity at end of day
+                        equity_map: Dict[str, float] = {}
+                        if self.portfolio_rows:
+                            pf_df2 = pd.DataFrame(self.portfolio_rows)
+                            if "date" in pf_df2.columns and "equity" in pf_df2.columns:
+                                pf_df2 = pf_df2.sort_values("date")
+                                equity_map = (
+                                    pf_df2.assign(date_str=pf_df2["date"].astype(str))
+                                    .groupby("date_str")["equity"].last().astype(float).to_dict()
+                                )
+                        # FIFO lots per symbol
+                        lots_map: Dict[str, List[Dict[str, float]]] = {}
+                        out_rows: List[Dict[str, Any]] = []
+                        for _, row in trades_df.iterrows():
+                            date_val = row["date"]
+                            date_str = str(date_val)
+                            symbol = str(row["symbol"])  # type: ignore
+                            side = str(row["side"]).upper()  # type: ignore
+                            qty = int(row["qty"])  # type: ignore
+                            price = float(row["fill_price"])  # type: ignore
+                            lots = lots_map.setdefault(symbol, [])
+                            if side == "BUY":
+                                lots.append({"qty": int(qty), "price": float(price)})
+                            else:
+                                remaining = int(qty)
+                                new_lots: List[Dict[str, float]] = []
+                                for lot in lots:
+                                    if remaining <= 0:
+                                        new_lots.append(lot)
+                                        continue
+                                    lot_qty = int(lot["qty"])  # type: ignore
+                                    if lot_qty <= remaining:
+                                        remaining -= lot_qty
+                                        continue
+                                    # partial reduce
+                                    new_lots.append({"qty": int(lot_qty - remaining), "price": float(lot["price"])})
+                                    remaining = 0
+                                lots_map[symbol] = new_lots
+                                lots = new_lots
+                            total_qty = int(sum(int(l["qty"]) for l in lots))
+                            if total_qty > 0:
+                                total_cost = float(sum(int(l["qty"]) * float(l["price"]) for l in lots))
+                                avg_cost = float(total_cost) / float(total_qty)
+                            else:
+                                avg_cost = 0.0
+                            out_rows.append({
+                                "date": date_str,
+                                "symbol": symbol,
+                                "side": side,
+                                "price": float(price),
+                                "cost_basis": float(avg_cost),
+                                "positions": int(total_qty),
+                                "total_equity": float(equity_map.get(date_str, float("nan"))),
+                            })
+                        if out_rows:
+                            out_df = pd.DataFrame(out_rows)
+                            # Render compact HTML table
+                            def fmt_money(x: Any) -> str:
+                                try:
+                                    return f"{float(x):,.2f}"
+                                except Exception:
+                                    return ""
+                            def fmt_int(x: Any) -> str:
+                                try:
+                                    return f"{int(x):,}"
+                                except Exception:
+                                    return "0"
+                            headers = ["date", "symbol", "side", "price", "cost_basis", "positions", "total_equity"]
+                            header_html = "".join(f"<th>{h}</th>" for h in headers)
+                            rows_html_parts: List[str] = []
+                            for _, r in out_df.iterrows():
+                                row_cells: List[str] = []
+                                row_cells.append(f"<td>{r['date']}</td>")
+                                row_cells.append(f"<td>{r['symbol']}</td>")
+                                row_cells.append(f"<td>{r['side']}</td>")
+                                row_cells.append(f"<td>{fmt_money(r['price'])}</td>")
+                                row_cells.append(f"<td>{fmt_money(r['cost_basis'])}</td>")
+                                row_cells.append(f"<td>{fmt_int(r['positions'])}</td>")
+                                row_cells.append(f"<td>{fmt_money(r['total_equity'])}</td>")
+                                rows_html_parts.append("<tr>" + "".join(row_cells) + "</tr>")
+                            body_html = "".join(rows_html_parts)
+                            orders_html = (
+                                "<table class=\"orders\">"
+                                "<thead><tr>" + header_html + "</tr></thead>"
+                                "<tbody>" + body_html + "</tbody>"
+                                "</table>"
+                            )
+                except Exception:
+                    orders_html = "<p>Failed to build Filled Orders table.</p>"
+
             if dates_str and market_values:
                 html_out = f"{outdir}/positions.html"
                 plotly_cdn = "https://cdn.plot.ly/plotly-2.30.0.min.js"
@@ -135,6 +234,7 @@ class _ReportWriter:
                     ret_x_json=json.dumps(ret_dates_str) if ret_dates_str else "[]",
                     ret_y_json=json.dumps([float(v) for v in ret_values]) if ret_values else "[]",
                     has_returns=bool(ret_values),
+                    orders_html=orders_html,
                 )
                 with open(html_out, "w", encoding="utf-8") as f:
                     f.write(html)

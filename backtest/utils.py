@@ -103,16 +103,22 @@ def get_all_trading_days(
     if end < start:
         raise ValueError("end_date must be on or after start_date")
 
+    # Use the exchange schedule to avoid timezone-shift artifacts when converting
+    # UTC midnight stamps into a local timezone. The schedule index represents
+    # the actual session dates, while open/close are tz-aware (UTC). Localize
+    # the session dates directly to the requested market timezone at midnight.
     cal = mcal.get_calendar(calendar)
-    valid = cal.valid_days(start_date=start, end_date=end)
-    idx = pd.DatetimeIndex(valid)
-    # Convert the exchange schedule (typically UTC) into the desired market tz
-    if idx.tz is None:
-        idx = idx.tz_localize("UTC").tz_convert(tz)
-    else:
-        idx = idx.tz_convert(tz)
+    schedule = cal.schedule(start_date=start, end_date=end)
 
-    ts_days = [pd.Timestamp(d).normalize() for d in idx]
+    session_index = schedule.index
+    # session_index is typically tz-naive date-like values. Localize to the
+    # requested tz at midnight to represent the local trading date cleanly.
+    if getattr(session_index, "tz", None) is None:
+        localized = session_index.tz_localize(tz)
+    else:
+        localized = session_index.tz_convert(tz)
+
+    ts_days = [pd.Timestamp(d).normalize() for d in localized]
     if as_datetime64:
         return [t.tz_localize(None).to_datetime64() for t in ts_days]
     return ts_days

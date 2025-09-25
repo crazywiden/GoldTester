@@ -31,11 +31,18 @@ signals:
   function: compute_target_weights
 
 io:
-  market_data_path: /Users/jiangziqi/Documents/2025_3/stock/v3/consolidated_raw_data_beyond_2b_enough_data_symbol.csv
-  output_dir: /Users/jiangziqi/Documents/2025_3/stock/GoldTester/tests/test_runs/sentiment_based/out
+  market_data_path: /Users/widen/Documents/study/quant/consolidated_raw_data_20250101_20251001.csv
+  output_dir: /Users/widen/Documents/study/quant/GoldTester/tests/test_runs/sentiment_based/out
   artifacts:
     write_trades: true
     write_positions: true
     write_portfolio: true
     write_metrics: true
   open_positions_html: true
+
+risk:
+  enabled: true
+  stop_loss: 0.01
+  take_profit: 0.02
+  action: LIQUIDATE
+  use_intraday_extremes: true

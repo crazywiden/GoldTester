@@ -49,6 +49,7 @@ def get_days_held(
     """Estimate holding days from the earliest lot date."""
     lots = portfolio.shares[symbol]
     if not lots:
+        logger.warning(f"No lots found for {symbol}")
         return 0
     # Get the earliest date from all lots
     first_date = min(lot["date"] for lot in lots)

@@ -33,6 +33,7 @@ def run(cfg_path: str) -> None:
     metrics_engine = MetricsEngine(cfg)
 
     date_list = sorted(data_loader.market["date"].unique())
+    logger.info(f"Date list: {date_list}")
     if len(date_list) < 2:
         logger.error("Not enough dates to run backtest")
         return
@@ -43,8 +44,12 @@ def run(cfg_path: str) -> None:
     start_date = cfg.get("run", {}).get("start_date")
     end_date = cfg.get("run", {}).get("end_date")
     logger.info(f"Start running backtest, start date: {start_date}, end date: {end_date}")
+    
     start_time = time.perf_counter()
     all_trading_days = utils.get_all_trading_days(start_date, end_date)
+    logger.info(f"All trading days: {all_trading_days}")
+    import sys
+    sys.exit(0)
     for t0 in all_trading_days:
         logger.info(f"Running backtest for date {t0}")
         data_t0 = data_loader.get_slice(t0)
