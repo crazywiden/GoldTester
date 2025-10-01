@@ -13,6 +13,7 @@ def render_positions_html(
     ret_y_json: str,
     has_returns: bool,
     orders_html: str,
+    extra_sections_html: str = "",
 ) -> str:
     has_y2_js = "true" if has_y2 else "false"
     has_returns_js = "true" if has_returns else "false"
@@ -37,6 +38,8 @@ def render_positions_html(
     table.orders {{ border-collapse: collapse; margin: 8px 0 12px 0; width: 100%; }}
     table.orders td, table.orders th {{ border: 1px solid #ddd; padding: 6px 10px; }}
     table.orders th {{ background: #f7f7f7; text-align: left; }}
+    .profit {{ color: #28a745; font-weight: bold; }}
+    .loss {{ color: #dc3545; font-weight: bold; }}
   </style>
   </head>
 <body>
@@ -56,6 +59,9 @@ def render_positions_html(
   <div class=\"container\">
     <h2>Filled Orders</h2>
     {orders_html}
+  </div>
+  <div class=\"container\">
+    {extra_sections_html}
   </div>
   <script>
     const x = {x_json};

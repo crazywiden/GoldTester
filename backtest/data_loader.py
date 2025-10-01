@@ -104,23 +104,17 @@ class DataLoader:
         return float(panel["volume"].tail(lookback).mean())
 
 
-def choose_ref_prices_for_next_fill(
+def choose_target_prices_for_next_fill(
     date: pd.Timestamp,
     data_loader: DataLoader,
     cfg: Mapping[str, Any],
-    order_specs: Optional[Dict[str, Any]] = None,
+    order_specs: Dict[str, Any],
 ) -> Dict[str, float]:
-    """Choose per-symbol reference prices for sizing and order generation.
-
-    Behavior:
-    - For MARKET orders (or when no spec provided), use the configured base price
-      derived from the data slice at the given date.
-    - For LIMIT orders (when provided via order_specs), use the provided limit_price
-      as the reference price for that symbol.
-    """
     method = cfg["execution"]["order_fill_method"]
     df = data_loader.get_slice(date)
+    target_prices_map = {}
     if df.empty:
+        logger.error(f"Data for date {date} is empty, skipping")
         return {}
     if method == "next_open":
         base = df["open"]
@@ -130,26 +124,26 @@ def choose_ref_prices_for_next_fill(
         base = (df["high"] + df["low"] + df["close"]) / 3.0
     else:
         base = df["close"]
-    ref_map = {sym: float(p) for sym, p in base.groupby(df["symbol"]).first().items()}
-
-    # update reference prices from order_specs
-    if order_specs:
-        for symbol, spec in order_specs.items():
-            order_type = spec.get("order_type", "MARKET").upper()
-            if order_type == "LIMIT":
-                ref_map[symbol] = spec.get("limit_price")
-    return ref_map
+    
+    all_target_prices = base.groupby(df["symbol"]).first().to_dict()
+    for symbol, spec in order_specs.items():
+        order_type = spec.get("order_type", "MARKET").upper()
+        if order_type == "LIMIT":
+            target_prices_map[symbol] = round(spec.get("limit_price"), 2)
+        elif order_type == "MARKET":
+            target_prices_map[symbol] = round(all_target_prices[symbol], 2)
+    return target_prices_map
 
 
 def get_marking_series(
     date: pd.Timestamp,
     data_loader: DataLoader,
-    cfg: Mapping[str, Any],
 ) -> Tuple[Dict[str, float], Dict[str, float]]:
     df = data_loader.get_slice(date)
     if df.empty:
+        logger.error(f"Data for date {date} is empty, skipping")
         return {}, {}
-    price_col = cfg.get("run", {}).get("price_column_for_valuation", "close")
+    price_col = "close"
     if price_col not in df.columns:
         logger.error(f"Price column {price_col} not found in data")
         raise ValueError(f"Price column {price_col} not found in data")

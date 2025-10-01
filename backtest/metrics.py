@@ -20,17 +20,23 @@ class MetricsEngine:
         else:
             self.rf_daily_const = 0.0
 
-    def update(self, date: pd.Timestamp, equity: float, prev_equity: float) -> Dict:
+    def update(self, date: pd.Timestamp, equity: float) -> Dict:
         self.dates.append(date)
+        prev_equity = -1.0
+        daily_return = 0.0
+        if len(self.equities) > 1:
+            prev_equity = self.equities[-1]
+        if prev_equity > 0:
+            daily_return = float(equity) / float(prev_equity) - 1.0
         self.equities.append(float(equity))
-        if prev_equity and prev_equity != 0:
-            r = float(equity) / float(prev_equity) - 1.0
+        self.returns.append(daily_return)
+
+        return_list = np.array(self.returns, dtype=float)
+        alpha_return_arr = return_list - self.rf_daily_const
+        if len(return_list) > 1:
+            vol_annualized = float(np.std(return_list, ddof=1) * np.sqrt(252))
         else:
-            r = 0.0
-        self.returns.append(r)
-        r_list = np.array(self.returns, dtype=float)
-        alpha_return_arr = r_list - self.rf_daily_const
-        vol_annualized = float(np.std(r_list, ddof=1) * np.sqrt(252)) if len(r_list) > 1 else 0.0
+            vol_annualized = 0.0
 
         sharpe_itd = 0.0
         if len(alpha_return_arr) > 1:
@@ -39,21 +45,12 @@ class MetricsEngine:
             denominator = std_alpha_return if std_alpha_return != 0 else 1.0
             sharpe_itd = (mean_alpha_return / denominator) * np.sqrt(252)
 
-        window = 30
-        sharpe_30d = 0.0
-        if len(alpha_return_arr) >= 2:
-            last = alpha_return_arr[-window:]
-            if len(last) > 1:
-                mean_last = np.mean(last)
-                std_last = np.std(last, ddof=1)
-                denominator = std_last if std_last != 0 else 1.0
-                sharpe_30d = (mean_last / denominator) * np.sqrt(252)
         # drawdown
         equity_list = np.array(self.equities, dtype=float)
         peaks = np.maximum.accumulate(equity_list)
-        dd = equity_list / np.where(peaks == 0, 1.0, peaks) - 1.0
-        cur_dd = float(dd[-1]) if len(dd) else 0.0
-        max_dd = float(np.min(dd)) if len(dd) else 0.0
+        drawdown_list = equity_list / np.where(peaks == 0, 1.0, peaks) - 1.0
+        cur_dd = float(drawdown_list[-1]) if len(drawdown_list) else 0.0
+        max_dd = float(np.min(drawdown_list)) if len(drawdown_list) else 0.0
         cumulative_return = 0.0
         if equity_list.size > 0:
             initial_equity = equity_list[0] if equity_list[0] != 0 else 1.0
@@ -61,11 +58,10 @@ class MetricsEngine:
 
         return {
             "date": date,
-            "daily_return": float(r),
+            "daily_return": float(daily_return),
             "cumulative_return": float(cumulative_return),
             "vol_annualized": float(vol_annualized),
             "sharpe_itd": float(sharpe_itd),
-            "sharpe_30d": float(sharpe_30d),
             "max_drawdown": float(max_dd),
             "drawdown": float(cur_dd),
             "rf_daily": float(self.rf_daily_const),

@@ -31,7 +31,7 @@ TICKER_LIST: set[str] = set()
 
 HOLD_DAYS_T: int = 5
 TAKE_PROFIT_PCT: float = 0.02
-RETURN_THRESHOLD_R: float = -0.05 
+RETURN_THRESHOLD_R: float = -0.1 
 D_LOOKBACK_DAYS: int = 20
 
 DROP_THRESHOLD_PCT: float = 5
