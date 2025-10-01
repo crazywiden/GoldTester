@@ -19,6 +19,15 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+### Testing
+```bash
+# Run integration tests
+python tests/integration_test.py
+
+# Run unit tests (when available)
+python -m pytest tests/unit/ -v
+```
+
 ## Architecture Overview
 
 GoldTester is a quantitative trading backtesting framework with a modular architecture:
@@ -70,10 +79,10 @@ The framework automatically detects which interface is used and maintains full b
 
 ### Configuration System
 
-All backtest parameters are specified in YAML configuration files (e.g., `backtest_config.yaml`):
-- Run parameters (dates, seed)
-- Portfolio settings (cash, leverage, shorting)
-- Execution models (slippage, commissions, fills)
+All backtest parameters are specified in YAML configuration files. Example configurations can be found in `tests/test_runs/*/`:
+- Run parameters (dates, seed, price column for valuation)
+- Portfolio settings (initial cash, leverage limits, short selling)
+- Execution models (order fill methods, slippage, commissions)
 - Signal module specification
 - Data file paths and output directories
 

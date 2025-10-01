@@ -2,7 +2,7 @@ import math
 from loguru import logger
 from typing import Dict, List, Optional, Any, Mapping
 
-from backtest.types import Order
+from backtest.backtest_types import Order
 
 
 class OrderGenerator:
@@ -13,19 +13,19 @@ class OrderGenerator:
         self,
         weights: Dict[str, float],
         available_equity: float,
-        price_map: Dict[str, float],
+        target_prices_map: Dict[str, float],
     ) -> Dict[str, int]:
         raw_shares = {}
         notional = 0.0
         for symbol in weights:
             money_allocated = weights[symbol] * available_equity
-            symbol_price = price_map[symbol]
+            symbol_price = target_prices_map[symbol]
             if symbol_price == 0:
                 logger.warning(f"Price for {symbol} is 0, skipping")
                 raw_shares[symbol] = 0
                 continue
             raw_shares[symbol] = int(math.floor(money_allocated / symbol_price))
-            notional += price_map[symbol] * raw_shares[symbol]
+            notional += target_prices_map[symbol] * raw_shares[symbol]
 
         if notional > available_equity and notional > 0:
             scale = available_equity / notional
@@ -36,8 +36,9 @@ class OrderGenerator:
         self,
         cur_shares: Dict[str, int],
         target_shares: Dict[str, int],
-        ref_prices: Dict[str, float],
+        target_prices: Dict[str, float],
         order_specs: Optional[Dict[str, Dict[str, Any]]] = None,
+        portfolio=None,
     ) -> List[Order]:
         orders: List[Order] = []
         if order_specs is None:
@@ -53,13 +54,22 @@ class OrderGenerator:
                 continue
             side = "BUY" if delta > 0 else "SELL"
             qty = abs(delta)
-            ref_price = float(ref_prices[symbol])
+            ref_price = float(target_prices[symbol])
             
             # Get order specifications for this symbol
             symbol_spec = order_specs.get(symbol, {})
             order_type = symbol_spec.get("order_type", "MARKET")
             limit_price = symbol_spec.get("limit_price", None)
-            
+
+            # Calculate base price
+            base_price = None
+            if side == "BUY":
+                # For BUY orders, base_price will be set to fill_price during execution
+                base_price = None
+            elif side == "SELL" and portfolio is not None:
+                # For SELL orders, calculate the average cost of shares being sold (FIFO)
+                base_price = portfolio.get_sell_cost_basis(symbol, qty)
+
             orders.append(Order(
                 date=None,
                 symbol=symbol,
@@ -68,5 +78,6 @@ class OrderGenerator:
                 ref_price=ref_price,
                 order_type=order_type,
                 limit_price=limit_price,
+                base_price=base_price,
             ))
         return orders

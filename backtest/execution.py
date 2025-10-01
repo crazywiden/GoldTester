@@ -4,7 +4,7 @@ import math
 import pandas as pd
 from loguru import logger
 
-from backtest.types import Order, Fill
+from backtest.backtest_types import Order, Fill
 from backtest.utils import typical_price
 from backtest.data_loader import DataLoader
 
@@ -65,22 +65,18 @@ class ExecutionSimulator:
         orders: List[Order],
     ) -> List[Fill]:
         if not orders:
+            logger.warning(f"No orders to fill for date: {date}")
             return []
         # Halts for date
-        if self.cfg["execution"].get("respect_delisting", True):
-            halts = self.data_loader.halts
-        else:
-            halts = pd.DataFrame()
+        halts = pd.DataFrame()
         halted_symbols = set()
-        try:
-            # halts uses naive normalized dates; convert runtime date accordingly
+        is_respect_delisting = self.cfg["execution"].get("respect_delisting", True)
+        if is_respect_delisting:
+            halts = self.data_loader.halts
             date_day = pd.Timestamp(date).tz_localize(None).normalize()
             day_halts = halts[halts["date"] == date_day]
             if not day_halts.empty:
                 halted_symbols = set(day_halts.loc[day_halts["is_halted"] == True, "symbol"].tolist())
-        except Exception:
-            logger.warning(f"Halt data not found for date: {date}, skipping halt check")
-            pass
 
         fills = []
         for idx, order in enumerate(orders):
@@ -112,20 +108,29 @@ class ExecutionSimulator:
                 if order.side.upper() == "BUY":
                     # we can fill if limit_price >= low
                     can_fill = order.limit_price >= low
-                else:
+                elif order.side.upper() == "SELL":
                     # we can fill if limit_price <= high  
                     can_fill = order.limit_price <= high
-                
+                else:
+                    raise ValueError(f"Invalid side: {order.side}")
+
                 if not can_fill:
                     logger.info(
                         f"Limit order cannot be filled: {order.side} {symbol} at {order.limit_price}, "
-                        f"range [{low}, {high}], abort execution"
+                        f"range [{low}, {high}], abort execution. date: {date}"
                     )
                     continue
                 
                 # Use limit price as fill price for limit orders
                 fill_price = order.limit_price
                 commission = self._commission(qty)
+
+                # Calculate base_price
+                if order.side.upper() == "BUY":
+                    base_price = fill_price  # For BUY, base_price is fill_price
+                else:
+                    base_price = order.base_price  # For SELL, use calculated base_price from order
+
                 fill = Fill(
                     order_id=f"ord_{str(date.date())}_{symbol}_{idx}",
                     date=date,
@@ -134,23 +139,36 @@ class ExecutionSimulator:
                     qty=qty,
                     ref_price=float(order.ref_price),
                     fill_price=float(fill_price),
-                    slippage=0.0,  # No slippage for limit orders
+                    slippage=0.0,
                     commission=float(commission),
                     order_type="LIMIT",
+                    base_price=base_price,
                 )
                 fills.append(fill)
             else:
-                # Market order - use predefined logic in configuration
                 base_price = self._base_fill_price(date, symbol)
                 if base_price == float("nan"):
                     logger.error(f"Base fill price is NaN, skipping execution for date: {date}, symbol: {symbol}")
                     continue
-                side_sign = 1 if order.side.upper() == "BUY" else -1
+                if order.side.upper() == "BUY":
+                    side_sign = 1
+                elif order.side.upper() == "SELL":
+                    side_sign = -1
+                else:
+                    raise ValueError(f"Invalid side: {order.side}")
+
                 slip = self._apply_slippage(
                     side_sign, order.ref_price, qty, qty - average_volume,
                 )
                 fill_price = base_price + slip
                 commission = self._commission(qty)
+
+                # Calculate cost basis
+                if order.side.upper() == "BUY":
+                    cost_basis = fill_price  # For BUY, base_price is fill_price
+                else:
+                    cost_basis = order.base_price  # For SELL, use calculated base_price from order
+
                 fill = Fill(
                     order_id=f"ord_{str(date.date())}_{symbol}_{idx}",
                     date=date,
@@ -162,6 +180,7 @@ class ExecutionSimulator:
                     slippage=float(slip * qty),
                     commission=float(commission),
                     order_type="MARKET",
+                    base_price=cost_basis,
                 )
                 fills.append(fill)
         return fills

@@ -21,10 +21,10 @@ def _get_risk_cfg(cfg: Mapping[str, Any]) -> Dict[str, Any]:
 def evaluate_stop_levels(
     date: pd.Timestamp,
     cfg: Mapping[str, Any],
-    portfolio: Portfolio,
-    prices_today: Dict[str, float],
-    intraday_high: Optional[Dict[str, float]] = None,
-    intraday_low: Optional[Dict[str, float]] = None,
+    target_shares: Dict[str, float],
+    intraday_close: Dict[str, float] = None,
+    intraday_high: Dict[str, float] = None,
+    intraday_low: Dict[str, float] = None,
 ) -> Dict[str, int]:
     """
     Returns target shares map after applying stop-loss and take-profit rules.

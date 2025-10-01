@@ -13,6 +13,7 @@ class Order:
     ref_price: float
     order_type: str = "MARKET"  # "MARKET" | "LIMIT"
     limit_price: Optional[float] = None
+    base_price: Optional[float] = None  # For BUY: fill_price, For SELL: avg cost of sold lots
 
 
 @dataclass
@@ -27,6 +28,7 @@ class Fill:
     slippage: float
     commission: float
     order_type: str = "MARKET"
+    base_price: Optional[float] = None  # For BUY: fill_price, For SELL: avg cost of sold lots
 
 
 @dataclass
